@@ -1,0 +1,162 @@
+{
+    "-O0": [
+        "LoopExperiment:       361671ms",
+        "AccumulateExperiment: 465525ms",
+        "FillVectorExperiment: 469265ms"
+    ],
+    "-O0 -funroll-loops": [
+        "LoopExperiment:       353278ms",
+        "AccumulateExperiment: 464092ms",
+        "FillVectorExperiment: 481513ms"
+    ],
+    "-O0 -ffast-math": [
+        "LoopExperiment:       285768ms",
+        "AccumulateExperiment: 450371ms",
+        "FillVectorExperiment: 472115ms"
+    ],
+    "-O0 -march=native": [
+        "LoopExperiment:       316660ms",
+        "AccumulateExperiment: 460607ms",
+        "FillVectorExperiment: 487253ms"
+    ],
+    "-O0 -funroll-loops -ffast-math": [
+        "LoopExperiment:       292253ms",
+        "AccumulateExperiment: 463765ms",
+        "FillVectorExperiment: 484560ms"
+    ],
+    "-O0 -funroll-loops -march=native": [
+        "LoopExperiment:       331253ms",
+        "AccumulateExperiment: 471484ms",
+        "FillVectorExperiment: 256030ms"
+    ],
+    "-O0 -ffast-math -march=native": [
+        "LoopExperiment:       284086ms",
+        "AccumulateExperiment: 476699ms",
+        "FillVectorExperiment: 461391ms"
+    ],
+    "-O0 -funroll-loops -ffast-math -march=native": [
+        "LoopExperiment:       280615ms",
+        "AccumulateExperiment: 469982ms",
+        "FillVectorExperiment: 474594ms"
+    ],
+    "-O1": [
+        "LoopExperiment:       277274ms",
+        "AccumulateExperiment: 284044ms",
+        "FillVectorExperiment: 434809ms"
+    ],
+    "-O1 -funroll-loops": [
+        "LoopExperiment:       315567ms",
+        "AccumulateExperiment: 254986ms",
+        "FillVectorExperiment: 431880ms"
+    ],
+    "-O1 -ffast-math": [
+        "LoopExperiment:       291972ms",
+        "AccumulateExperiment: 270720ms",
+        "FillVectorExperiment: 409042ms"
+    ],
+    "-O1 -march=native": [
+        "LoopExperiment:       293473ms",
+        "AccumulateExperiment: 259220ms",
+        "FillVectorExperiment: 418164ms"
+    ],
+    "-O1 -funroll-loops -ffast-math": [
+        "LoopExperiment:       299615ms",
+        "AccumulateExperiment: 499219ms",
+        "FillVectorExperiment: 407632ms"
+    ],
+    "-O1 -funroll-loops -march=native": [
+        "LoopExperiment:       304615ms",
+        "AccumulateExperiment: 250016ms",
+        "FillVectorExperiment: 424650ms"
+    ],
+    "-O1 -ffast-math -march=native": [
+        "LoopExperiment:       261511ms",
+        "AccumulateExperiment: 263040ms",
+        "FillVectorExperiment: 417156ms"
+    ],
+    "-O1 -funroll-loops -ffast-math -march=native": [
+        "LoopExperiment:       301696ms",
+        "AccumulateExperiment: 506874ms",
+        "FillVectorExperiment: 412730ms"
+    ],
+    "-O2": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 285524ms"
+    ],
+    "-O2 -funroll-loops": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 307271ms"
+    ],
+    "-O2 -ffast-math": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 270650ms"
+    ],
+    "-O2 -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 267419ms"
+    ],
+    "-O2 -funroll-loops -ffast-math": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 293362ms"
+    ],
+    "-O2 -funroll-loops -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 302889ms"
+    ],
+    "-O2 -ffast-math -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 262760ms"
+    ],
+    "-O2 -funroll-loops -ffast-math -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 296933ms"
+    ],
+    "-O3": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 275153ms"
+    ],
+    "-O3 -funroll-loops": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 488028ms"
+    ],
+    "-O3 -ffast-math": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 278258ms"
+    ],
+    "-O3 -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 307548ms"
+    ],
+    "-O3 -funroll-loops -ffast-math": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 498885ms"
+    ],
+    "-O3 -funroll-loops -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 303263ms"
+    ],
+    "-O3 -ffast-math -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 347236ms"
+    ],
+    "-O3 -funroll-loops -ffast-math -march=native": [
+        "LoopExperiment:       0ms",
+        "AccumulateExperiment: 0ms",
+        "FillVectorExperiment: 302164ms"
+    ]
+}
