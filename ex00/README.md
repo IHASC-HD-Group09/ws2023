@@ -1,5 +1,7 @@
 # Exercise 00
-## Build and Run
+
+## 03
+### Build and Run
 1. Create an out of source directory  
     ``mkdir build``
 2. Switch into the directory  
@@ -13,3 +15,10 @@
 5. Finally, run it  
     ``/main``
 
+
+## 04
+### Build and Run
+1. Build:   
+   ```g++ -o daxpy.out daxpy.cc -pthread -std=c++17```
+2. Run:   
+   ```./daxpy.out```
