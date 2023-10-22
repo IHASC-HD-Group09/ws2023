@@ -1,27 +1,34 @@
 #include <iostream>
-#include <vector>
 #include <thread>
+#include <vector>
 
-const int P = std::thread::hardware_concurrency(); // number of threads
-const int N=25600;            // problem size
-std::vector<double> x(N,2.0); // first vector
-std::vector<double> y(N,2.0); // second vector
-double alpha = 5.0; // scalar alpha
 
-void daxpy (int rank)
-{
-  for (int i=(N*rank)/P; i<(N*(rank+1))/P; ++i) 
-    y[i] = x[i]*alpha + y[i];
+
+// NOLINTBEGIN(readability-identifier-length, readability-magic-numbers)
+const unsigned int P = std::thread::hardware_concurrency();  // number of threads
+const int N = 25600;                                         // problem size
+std::vector<double> x(N, 2.0);                               // first vector
+std::vector<double> y(N, 2.0);                               // second vector
+// NOLINTEND(readability-identifier-length, readability-magic-numbers)
+const double ALPHA = 5.0;  // scalar alpha
+
+void daxpy(int rank) {
+    for (unsigned int i = (N * rank) / P; i < (N * (rank + 1)) / P; ++i) {
+        y[i] = x[i] * ALPHA + y[i];
+    }
 }
 
-int main ()
-{
-  std::vector<std::thread> threads;
-  for (int rank=0; rank<P; ++rank)
-    threads.push_back(std::thread{daxpy,rank});
-  for (int rank=0; rank<P; ++rank)
-    threads[rank].join();
-  std::cout << "y after daxpy: ";
-  for (double i: y)
-    std::cout << i << " ";
+int main() {
+    std::vector<std::thread> threads;
+    threads.reserve(P);
+    for (int rank = 0; rank < P; ++rank) {
+        threads[rank] = std::thread{daxpy, rank};
+    }
+    for (int rank = 0; rank < P; ++rank) {
+        threads[rank].join();
+    }
+    std::cout << "y after daxpy: ";
+    for (const double i : y) {  // NOLINT(readability-identifier-length)
+        std::cout << i << " ";
+    }
 }
