@@ -6,11 +6,11 @@
 
 // NOLINTBEGIN(readability-identifier-length, readability-magic-numbers)
 const unsigned int P = std::thread::hardware_concurrency();  // number of threads
-const int N = 25600;                                         // problem size
+const int N = 12;                                            // problem size
 std::vector<double> x(N, 2.0);                               // first vector
 std::vector<double> y(N, 2.0);                               // second vector
 // NOLINTEND(readability-identifier-length, readability-magic-numbers)
-const double ALPHA = 5.0;  // scalar alpha
+const double ALPHA = 5.0;                                   // scalar alpha
 
 void daxpy(int rank) {
     for (unsigned int i = (N * rank) / P; i < (N * (rank + 1)) / P; ++i) {
