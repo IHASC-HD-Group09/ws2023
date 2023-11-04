@@ -19,14 +19,15 @@
  *
  */
 template <typename T>
-auto time_experiment(const T& experiment, int mintime = 250000) {
+auto time_experiment(const T& experiment,
+                     int mintime = 250000) {  // NOLINT(readability-magic-numbers)
     auto start = std::chrono::high_resolution_clock::now();
     auto stop = start;
     auto duration = stop - start;
     auto dcast = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
     std::pair<long, decltype(dcast)> rv;
     long rep = 1;
-    while (dcast < mintime && rep < 1000000000) {
+    while (dcast < mintime && rep < 1000000000) {  // NOLINT(readability-magic-numbers)
         start = std::chrono::high_resolution_clock::now();
         for (long k = 0; k < rep; k++) {
             experiment.run();
