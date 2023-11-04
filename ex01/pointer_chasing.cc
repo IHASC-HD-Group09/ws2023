@@ -3,7 +3,7 @@
 
 #include "time_experiment.hh"
 
-const int N = 64 * 1024 * 1024;  // max size
+const int N = 1<<30;  // max size
 std::vector<int> x(N, 1.0);      // data vector
 int rglobal = 0;
 
