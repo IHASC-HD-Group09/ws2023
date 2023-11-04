@@ -22,6 +22,7 @@ Checks: >
     performance-*,
     -performance-no-int-to-ptr,
     portability-*,
+    -portability-simd-intrinsics,
     readability-*,
     -readability-qualified-auto,
     -readability-identifier-length,

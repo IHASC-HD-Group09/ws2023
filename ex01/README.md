@@ -10,3 +10,12 @@
     ``make clean``  
 
 
+## 03
+### Build and Run
+``git pull --recursive``
+
+`mkdir build`
+`cd build`
+`cmake ..`
+`make`
+`./midpoint`

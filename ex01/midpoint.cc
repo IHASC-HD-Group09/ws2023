@@ -1,105 +1,85 @@
-#include <math.h>
+#include <cmath>
 #include <iostream>
-#include <immintrin.h>
 
-int n = 64;
+#include "time_experiment.hh"
 
+#include "vcl/vectorclass.h"
+#include "vcl/vectormath_exp.h"
+
+int n = 64;  // NOLINT(readability-magic-numbers)
 
 float func1(float x) {
-    return pow(x, 3) - (2 * pow(x, 2)) + (3 * x) - 1;
+    return powf(x, 3) - (2 * powf(x, 2)) + (3 * x) - 1;
 }
 
 float func2(float x) {
     float sum = 0;
-    for(int i=0; i < 15; ++i) {
-        sum += pow (x, i);
+    for (int i = 0; i <= 15; ++i) {  // NOLINT(readability-magic-numbers)
+        sum += powf(x, i);           // NOLINT(cppcoreguidelines-narrowing-conversions)
     }
     return sum;
 }
 
-__m256 func1_vectorized(__m256 x) {
-    float result;
-    __m256 x_squared = _mm256_mul_ps(x, x);
-    __m256 x_cubed = _mm256_mul_ps(x_squared, x);
-    __m256 two_x_squared = _mm256_add_ps(x_squared, x_squared);
-    __m256 three_x = _mm256_mul_ps(_mm256_set1_ps(3.0f), x);
-    return _mm256_sub_ps(x_cubed, _mm256_add_ps(two_x_squared, _mm256_sub_ps(three_x, _mm256_set1_ps(1.0f))));
+float func_1_vectorized(float x) {
+    auto const bases = Vec4f(x, x, x, x);
+    auto const powers = Vec4f(3, 2, 1, 0);  // NOLINT(readability-magic-numbers)
+    auto const results = pow(bases, powers);
+    auto const scalars = Vec4f(1, -2, 3, -1);  // NOLINT(readability-magic-numbers)
+    return horizontal_add(results * scalars);
 }
 
-__m256 func2_vectorized(__m256 x) {
-    __m256 sum = _mm256_set1_ps(0.0f);
-    __m256 x_powers = _mm256_set1_ps(1.0f);
-
-    for (int i = 0; i < 15; ++i) {
-        sum = _mm256_add_ps(sum, x_powers);
-        x_powers = _mm256_mul_ps(x_powers, x);
-    }
-
-    return sum;
+float func_2_vectorized(float x) {
+    auto const base1 = Vec8f(x);
+    auto const base2 = Vec8f(x);
+    auto const powers1 = Vec8f(0, 1, 2, 3, 4, 5, 6, 7);        // NOLINT(readability-magic-numbers)
+    auto const powers2 = Vec8f(8, 9, 10, 11, 12, 13, 14, 15);  // NOLINT(readability-magic-numbers)
+    auto results1 = pow(base1, powers1);
+    auto results2 = pow(base2, powers2);
+    return horizontal_add(results1 + results2);
 }
-
-
 
 class Experiment {
     int _n;
     float (*_func)(float);
 
-    public:
-     Experiment(int n, float (*func)(float)) : _n(n), _func(func) {
+   public:
+    Experiment(int n, float (*func)(float)) : _n(n), _func(func) {}
 
-     }
-
-     float midpoint(int a, int b) const {
-        float step_size = (float((b - a)) / _n);
+    [[nodiscard]] float midpoint(int a, int b) const {
+        float const step_size =
+            (float((b - a)) / _n);  // NOLINT(cppcoreguidelines-narrowing-conversions)
         float sum = 0;
-        float x_i = float(a);
-        for(int i=0; i < _n; ++i) {
-            float midpoint = x_i + (step_size / 2);
+        auto x_i = float(a);
+        for (int i = 0; i < _n; ++i) {
+            float const midpoint = x_i + (step_size / 2);
             sum += _func(midpoint);
             x_i += step_size;
         }
         return step_size * sum;
-      }
-    
-     void run() const {
-        std::cout << midpoint(0, 1) << std::endl;
-     }
-};
+    }
 
-class VectorizedExperiment {
-    int _n;
-    __m256 (*_func)(__m256);
-
-    public:
-     VectorizedExperiment(int n, __m256 (*func)(__m256)) : _n(n), _func(func) {
-
-     }
-
-     __m256 midpoint(int a, int b) const {
-        __m256 step_size = _mm256_set1_ps(float((b - a)) / _n);
-        __m256 sum = _mm256_set1_ps(0.0f);
-        __m256 x_i = _mm256_set1_ps(float(a));
-        for(int i=0; i < _n; ++i) {
-            __m256 midpoint =_mm256_add_ps(x_i, _mm256_div_ps(step_size, _mm256_set1_ps(2.0f)));
-            sum = _mm256_add_ps(sum, _func(midpoint));
-            x_i = _mm256_add_ps(x_i, step_size);
-        }
-        return _mm256_mul_ps(step_size, sum);
-      }
-    
-     void run() const {
-        float result;
-        _mm256_storeu_ps(&result, midpoint(0, 1));
-        std::cout << result << std::endl;
-     }
+    void run() const { midpoint(0, 1); }
 };
 
 int main() {
-    Experiment const e1(n, &func1);
-    Experiment const e2(n, &func2);
-    VectorizedExperiment const e3(n, &func1_vectorized);
-    e1.run();
-    e2.run();
-    e3.run();
+    for (int i = 8; i <= 64; i *= 2) {  // NOLINT(readability-magic-numbers)
+        Experiment const e1(i, &func1);
+        Experiment const e2(i, &func2);
+        Experiment const e1_vec(i, &func_1_vectorized);
+        Experiment const e2_vec(i, &func_2_vectorized);
+        auto d1 = time_experiment(e1);
+        auto d2 = time_experiment(e2);
+        auto d1_vec = time_experiment(e1_vec);
+        auto d2_vec = time_experiment(e2_vec);
+        double const time_per_experiment_1 = d1.second * 1.0e-6 / d1.first * 1e9;
+        double const time_per_experiment_2 = d2.second * 1.0e-6 / d2.first * 1e9;
+        double const time_per_experiment_1_vec = d1_vec.second * 1.0e-6 / d1_vec.first * 1e9;
+        double const time_per_experiment_2_vec = d2_vec.second * 1.0e-6 / d2_vec.first * 1e9;
 
+        std::cout << "N = " << i << ":\n";
+        std::cout << "func1: " << time_per_experiment_1 << " ns\n";
+        std::cout << "func2: " << time_per_experiment_2 << " ns\n";
+        std::cout << "func1_vec: " << time_per_experiment_1_vec << " ns\n";
+        std::cout << "func2_vec: " << time_per_experiment_2_vec << " ns\n";
+    }
 }

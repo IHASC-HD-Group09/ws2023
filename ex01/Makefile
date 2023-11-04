@@ -8,8 +8,9 @@ LFLAGS = -lm -lpthread
 all: pointer_chasing
 
 
-pointer_chasing: pointer_chasing.cc Makefile
+pointer_chasing: pointer_chasing.cc 
 	$(CC) $(CCFLAGS) -o $@.out $< $(LFLAGS)
+
 
 clean:
 	rm -f pointer_chasing.out
