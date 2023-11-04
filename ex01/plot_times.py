@@ -1,32 +1,38 @@
+from typing import List, Dict, Tuple
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.rcParams.update(matplotlib.rcParamsDefault)
 
-def removeNewLine(line):
-    line[-1] = line[-1].replace('\n', '')
 
-def readTimesFromFile(filename):
-    timesPerSize = {}
+def read_times_from_file(filename: str) -> Tuple[List[int], Dict[int, List[float]]]:
+    times_per_size: Dict[int, List[float]] = {}
+
     with open(filename) as fp:
-        strides = fp.readline().split(", ")[1:]
-        removeNewLine(strides)
-        while line := fp.readline().split(", "):
-            if line == ['']:
+        strides: List[int] = list(map(int, fp.readline().rstrip().split(", ")[1:]))
+
+        while line := fp.readline().rstrip().split(", "):
+            if line == [""]:
                 break
-            removeNewLine(line)
-            timesPerSize[line[0]] = line[1:]
+            vec_size, times = int(line[0]), list(map(float, line[1:]))
 
-    return strides, timesPerSize
+            times_per_size[vec_size] = times
 
-def plotTimes(strides, timesPerSize):
-    for vecSize in timesPerSize.keys():
-        times = timesPerSize[vecSize]
-        plt.loglog(strides[:len(times)], times, label=vecSize)
+    return strides, times_per_size
+
+
+def plot_times(strides: List[int], times_per_size: Dict[int, List[float]]) -> None:
+
+    for vec_size in times_per_size.keys():
+        times: List[float] = times_per_size[vec_size]
+        plt.plot(strides[: len(times)], times, label=vec_size)
 
     plt.legend()
-    plt.savefig('ex1_plot.png')
-
+    plt.yscale("log")
+    plt.xlabel("Stride")
+    plt.ylabel("Time (s)")
+    plt.savefig("ex1_plot.png")
 
 
 if __name__ == "__main__":
-    strides, timesPerSize = readTimesFromFile("out.txt")
-    plotTimes(strides, timesPerSize)
-
+    strides, times_per_size = read_times_from_file("out.txt")
+    plot_times(strides, times_per_size)

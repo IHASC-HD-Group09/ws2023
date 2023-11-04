@@ -24,6 +24,8 @@ Checks: >
     portability-*,
     readability-*,
     -readability-qualified-auto,
+    -readability-identifier-length,
+    -readability-identifier-naming,
 
     -bugprone-narrowing-conversions,
     -cppcoreguidelines-avoid-c-arrays,
