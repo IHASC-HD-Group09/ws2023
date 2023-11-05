@@ -27,6 +27,7 @@ Checks: >
     -readability-qualified-auto,
     -readability-identifier-length,
     -readability-identifier-naming,
+    -readability-magic-numbers,
 
     -bugprone-narrowing-conversions,
     -cppcoreguidelines-avoid-c-arrays,
