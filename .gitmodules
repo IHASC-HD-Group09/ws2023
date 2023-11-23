@@ -4,3 +4,9 @@
 [submodule "ex01/vcl"]
 	path = ex01/vcl
 	url = https://github.com/vectorclass/version2.git
+[submodule "ex03/version2"]
+	path = ex03/version2
+	url = https://github.com/vectorclass/version2.git
+[submodule "ex03/vcl"]
+	path = ex03/vcl
+	url = https://github.com/vectorclass/version2.git
