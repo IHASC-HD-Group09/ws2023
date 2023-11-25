@@ -15,7 +15,7 @@
 
 // basic data type for position, velocity, acceleration
 const int M = 4;
-typedef double double3[M];  // pad up for later use with SIMD
+using double3 = double[M];  // pad up for later use with SIMD
 const int B = 64;           // block size for tiling
 
 /*const double gamma = 6.674E-11;*/
@@ -23,182 +23,121 @@ const double G = 1.0;
 const double epsilon2 = 1E-10;
 
 
-void acceleration (int n, double3* __restrict__ x, double* __restrict__ m, double3* __restrict__ a)
-{
-  Vec4d A0,A1;
-  Vec4d D0,D1,D2,D3; // distances
-  Vec4d E0,E1,E2,E3; // distances
-  Vec4d S0,S,U,T0,T1,T2;
-  
-  for (int I=0; I<n; I+=B)
-    {
-      // block (I,I)
-      for (int i=I; i<I+B; i++)
-	{
-	  for (int j=i+1; j<I+B; j++)
-	    {
-	      double d0 = x[j][0]-x[i][0];
-	      double d1 = x[j][1]-x[i][1];
-	      double d2 = x[j][2]-x[i][2]; 
-	      double r2 = d0*d0 + d1*d1 + d2*d2 + epsilon2;
-	      double r = sqrt(r2);
-	      double invfact = G/(r*r2);
-	      double factori = m[i]*invfact;
-	      double factorj = m[j]*invfact;
-	      a[i][0] += factorj*d0;
-	      a[i][1] += factorj*d1;
-	      a[i][2] += factorj*d2;
-	      a[j][0] -= factori*d0;
-	      a[j][1] -= factori*d1;
-	      a[j][2] -= factori*d2;
-	    }
-	}
-      // blocks J>I
-      for (int J=I+B; J<n; J+=B)
-	{
-	  for (int i=I; i<I+B; i+=2)
-	    {
-	      for (int j=J; j<J+B; j+=4)
-		{
-		  // distances 2x4 masses
-		  T0.load(&x[i][0]);
-		  T1.load(&x[i+1][0]);
-		  D0.load(&x[j][0]);
-		  D1.load(&x[j+1][0]);
-		  D2.load(&x[j+2][0]);
-		  D3.load(&x[j+3][0]);
-		  E0 = D0;
-		  E1 = D1;
-		  E2 = D2;
-		  E3 = D3;
-		  D0 -= T0;
-		  D1 -= T0;
-		  D2 -= T0;
-		  D3 -= T0;
-		  E0 -= T1;
-		  E1 -= T1;
-		  E2 -= T1;
-		  E3 -= T1;
-		  
-		  // transpose first batch
-		  S = blend4<0,4,1,5>(D0,D1);
-		  U = blend4<0,4,1,5>(D2,D3);
-		  T0 = blend4<0,1,4,5>(S,U); // all 0 components
-		  T1 = blend4<2,3,6,7>(S,U); // all 1 components
-		  S = blend4<2,6,V_DC,V_DC>(D0,D1);
-		  U = blend4<2,6,V_DC,V_DC>(D2,D3);
-		  T2 = blend4<0,1,4,5>(S,U); // all 2 components
+void acceleration(int n, double3* __restrict__ x, double* __restrict__ m, double3* __restrict__ a) {
+    Vec4d pos_i1, pos_i2, pos_i3, pos_i4;
+    Vec4d pos_j1, pos_j2, pos_j3, pos_j4;
+    Vec4d acc_i1, acc_i2, acc_i3, acc_i4;
+    Vec4d acc_j1, acc_j2, acc_j3, acc_j4;
+    Vec4d diff_pos11, diff_pos12, diff_pos13, diff_pos14, diff_pos21, diff_pos22, diff_pos23,
+        diff_pos24, diff_pos31, diff_pos32, diff_pos33, diff_pos34, diff_pos41, diff_pos42,
+        diff_pos43, diff_pos44;
+    Vec4d diff_pos_i12, diff_pos_i13, diff_pos_i14, diff_pos_i23, diff_pos_i24, diff_pos_i34;
 
-		  // the norms first batch
-		  S0 = Vec4d(epsilon2);
-		  S0 = mul_add(T0,T0,S0);
-		  S0 = mul_add(T1,T1,S0);
-		  S0 = mul_add(T2,T2,S0);
+    for (int i = 0; i < n; i += 4) {
+        pos_i1.load(&x[i][0]);
+        acc_i1.load(&a[i][0]);
+        pos_i2.load(&x[i + 1][0]);
+        acc_i2.load(&a[i + 1][0]);
+        pos_i3.load(&x[i + 2][0]);
+        acc_i3.load(&a[i + 2][0]);
+        pos_i4.load(&x[i + 3][0]);
+        acc_i4.load(&a[i + 3][0]);
 
-		  // transpose second batch
-		  S = blend4<0,4,1,5>(E0,E1);
-		  U = blend4<0,4,1,5>(E2,E3);
-		  T0 = blend4<0,1,4,5>(S,U); // all 0 components
-		  T1 = blend4<2,3,6,7>(S,U); // all 1 components
-		  S = blend4<2,6,V_DC,V_DC>(E0,E1);
-		  U = blend4<2,6,V_DC,V_DC>(E2,E3);
-		  T2 = blend4<0,1,4,5>(S,U); // all 2 components
+        diff_pos_i12 = pos_i2 - pos_i1;
+        diff_pos_i13 = pos_i3 - pos_i1;
+        diff_pos_i14 = pos_i4 - pos_i1;
+        diff_pos_i23 = pos_i3 - pos_i2;
+        diff_pos_i24 = pos_i4 - pos_i2;
+        diff_pos_i34 = pos_i4 - pos_i3;
 
-		  // the norms second batch
-		  S = Vec4d(epsilon2);
-		  S = mul_add(T0,T0,S);
-		  S = mul_add(T1,T1,S);
-		  S = mul_add(T2,T2,S);
+        double r2_i12 = horizontal_add(diff_pos_i12 * diff_pos_i12) + epsilon2;
+        double r2_i13 = horizontal_add(diff_pos_i13 * diff_pos_i13) + epsilon2;
+        double r2_i14 = horizontal_add(diff_pos_i14 * diff_pos_i14) + epsilon2;
+        double r2_i23 = horizontal_add(diff_pos_i23 * diff_pos_i23) + epsilon2;
+        double r2_i24 = horizontal_add(diff_pos_i24 * diff_pos_i24) + epsilon2;
+        double r2_i34 = horizontal_add(diff_pos_i34 * diff_pos_i34) + epsilon2;
+        double r_i12 = sqrt(r2_i12);
+        double r_i13 = sqrt(r2_i13);
+        double r_i14 = sqrt(r2_i14);
+        double r_i23 = sqrt(r2_i23);
+        double r_i24 = sqrt(r2_i24);
+        double r_i34 = sqrt(r2_i34);
 
-		  // sqrt first batch
-		  U = sqrt(S0);
-		  U *= S0; // now U contains r^3
-		  T0 = Vec4d(G);
-		  S0 =T0/U; // now S is the inverse factor for four pairs first batch
+        double invfact_i12 = G / (r_i12 * r2_i12);
+        double invfact_i13 = G / (r_i13 * r2_i13);
+        double invfact_i14 = G / (r_i14 * r2_i14);
+        double invfact_i23 = G / (r_i23 * r2_i23);
+        double invfact_i24 = G / (r_i24 * r2_i24);
+        double invfact_i34 = G / (r_i34 * r2_i34);
 
-		  // sqrt second batch
-		  U = sqrt(S);
-		  U *= S; // now U contains r^3
-		  S =T0/U; // now S is the inverse factor for four pairs second batch
+        double m_i1 = m[i];
+        double m_i2 = m[i + 1];
+        double m_i3 = m[i + 2];
+        double m_i4 = m[i + 3];
 
-		  // update both rows from all columns
-		  A0.load(&a[i][0]);
-		  A1.load(&a[i+1][0]);
-		  T2 = Vec4d(m[j]); // mass col j		  
-		  U = permute4<0,0,0,0>(S0); // scalar factor column j
-		  T0 = T2*U;
-		  A0 = mul_add(T0,D0,A0);
-		  U = permute4<0,0,0,0>(S); // scalar factor column j
-		  T1 = T2*U;
-		  A1 = mul_add(T1,E0,A1);
+        // i1 -> i2, i3, i4
+        acc_i1 += m_i2 * invfact_i12 * diff_pos_i12;
+        acc_i2 -= m_i1 * invfact_i12 * diff_pos_i12;
+        acc_i1 += m_i3 * invfact_i13 * diff_pos_i13;
+        acc_i3 -= m_i1 * invfact_i13 * diff_pos_i13;
+        acc_i1 += m_i4 * invfact_i14 * diff_pos_i14;
+        acc_i4 -= m_i1 * invfact_i14 * diff_pos_i14;
+        // i2 -> i3, i4
+        acc_i2 += m_i3 * invfact_i23 * diff_pos_i23;
+        acc_i3 -= m_i2 * invfact_i23 * diff_pos_i23;
+        acc_i2 += m_i4 * invfact_i24 * diff_pos_i24;
+        acc_i4 -= m_i2 * invfact_i24 * diff_pos_i24;
+        // i3 -> i4
+        acc_i3 += m_i4 * invfact_i34 * diff_pos_i34;
+        acc_i4 -= m_i3 * invfact_i34 * diff_pos_i34;
 
-		  T2 = Vec4d(m[j+1]); // mass col j+1		  
-		  U = permute4<1,1,1,1>(S0); // scalar factor column j
-		  T0 = T2*U;
-		  A0 = mul_add(T0,D1,A0);
-		  U = permute4<1,1,1,1>(S); // scalar factor column j
-		  T1 = T2*U;
-		  A1 = mul_add(T1,E1,A1);
+        for (int j = i + 2; j < n; j += 2) {
+            pos_j1.load(&x[j][0]);
+            acc_j1.load(&a[j][0]);
+            pos_j2.load(&x[j + 1][0]);
+            acc_j2.load(&a[j + 1][0]);
+            diff_pos11 = pos_j1 - pos_i1;
+            diff_pos12 = pos_j2 - pos_i1;
+            diff_pos21 = pos_j1 - pos_i2;
+            diff_pos22 = pos_j2 - pos_i2;
 
-		  T2 = Vec4d(m[j+2]); // mass col j+2		  
-		  U = permute4<2,2,2,2>(S0); // scalar factor column j
-		  T0 = T2*U;
-		  A0 = mul_add(T0,D2,A0);
-		  U = permute4<2,2,2,2>(S); // scalar factor column j
-		  T1 = T2*U;
-		  A1 = mul_add(T1,E2,A1);
+            double r2_11 = horizontal_add(diff_pos11 * diff_pos11) + epsilon2;
+            double r2_12 = horizontal_add(diff_pos12 * diff_pos12) + epsilon2;
+            double r2_21 = horizontal_add(diff_pos21 * diff_pos21) + epsilon2;
+            double r2_22 = horizontal_add(diff_pos22 * diff_pos22) + epsilon2;
 
-		  T2 = Vec4d(m[j+3]); // mass col j+3		  
-		  U = permute4<3,3,3,3>(S0); // scalar factor column j
-		  T0 = T2*U;
-		  A0 = mul_add(T0,D3,A0);
-		  U = permute4<3,3,3,3>(S); // scalar factor column j
-		  T1 = T2*U;
-		  A1 = mul_add(T1,E3,A1);
-		  A0.store(&a[i][0]);
-		  A1.store(&a[i+1][0]);
+            double r_11 = sqrt(r2_11);
+            double r_12 = sqrt(r2_12);
+            double r_21 = sqrt(r2_21);
+            double r_22 = sqrt(r2_22);
 
-		  // now update all columns from both rows
-		  T0 = Vec4d(m[i]); // row 0 mass
-		  T1 = Vec4d(m[i+1]); // row 1 mass
-		  A0.load(&a[j][0]);
-		  U = permute4<0,0,0,0>(S0); // scalar factor column j row 0
-		  T2 = T0*U;
-		  A0 = nmul_add(T2,D0,A0);
-		  U = permute4<0,0,0,0>(S); // scalar factor column j row 1
-		  T2 = T1*U;
-		  A0 = nmul_add(T2,E0,A0);
-		  A0.store(&a[j][0]);
+            double invfact_11 = G / (r_11 * r2_11);
+            double invfact_12 = G / (r_12 * r2_12);
+            double invfact_21 = G / (r_21 * r2_21);
+            double invfact_22 = G / (r_22 * r2_22);
 
-		  A0.load(&a[j+1][0]);
-		  U = permute4<1,1,1,1>(S0); // scalar factor column j+1 row 0
-		  T2 = T0*U;
-		  A0 = nmul_add(T2,D1,A0);
-		  U = permute4<1,1,1,1>(S); // scalar factor column j+1 row 1
-		  T2 = T1*U;
-		  A0 = nmul_add(T2,E1,A0);
-		  A0.store(&a[j+1][0]);
+            double factorj1 = m[j] * invfact_11;
+            double factorj2 = m[j] * invfact_12;
+            double factorj3 = m[j + 1] * invfact_21;
+            double factorj4 = m[j + 1] * invfact_22;
 
-		  A0.load(&a[j+2][0]);
-		  U = permute4<2,2,2,2>(S0); // scalar factor column j+2 row 0
-		  T2 = T0*U;
-		  A0 = nmul_add(T2,D2,A0);
-		  U = permute4<2,2,2,2>(S); // scalar factor column j+2 row 1
-		  T2 = T1*U;
-		  A0 = nmul_add(T2,E2,A0);
-		  A0.store(&a[j+2][0]);
+            acc_i1 += factorj1 * diff_pos11;
+            acc_i1 += factorj2 * diff_pos12;
+            acc_i2 += factorj3 * diff_pos21;
+            acc_i2 += factorj4 * diff_pos22;
 
-		  A0.load(&a[j+3][0]);
-		  U = permute4<3,3,3,3>(S0); // scalar factor column j+3 row 0
-		  T2 = T0*U;
-		  A0 = nmul_add(T2,D3,A0);
-		  U = permute4<3,3,3,3>(S); // scalar factor column j+3 row 1
-		  T2 = T1*U;
-		  A0 = nmul_add(T2,E3,A0);
-		  A0.store(&a[j+3][0]);
-		}
-	    }
-	}
+            acc_j1 -= factorj1 * diff_pos11;
+            acc_j1 -= factorj3 * diff_pos21;
+            acc_j2 -= factorj2 * diff_pos12;
+            acc_j2 -= factorj4 * diff_pos22;
+
+            acc_j1.store(&a[j][0]);
+            acc_j2.store(&a[j + 1][0]);
+        }
+        acc_i1.store_nt(&a[i][0]);
+        acc_i2.store_nt(&a[i + 1][0]);
+        acc_i3.store_nt(&a[i + 2][0]);
+        acc_i4.store_nt(&a[i + 3][0]);
     }
 }
 
