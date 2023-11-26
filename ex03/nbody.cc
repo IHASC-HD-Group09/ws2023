@@ -22,7 +22,6 @@ const int B = 64;           // block size for tiling
 const double G = 1.0;
 const double epsilon2 = 1E-10;
 
-
 void acceleration(int n, double3* __restrict__ x, double* __restrict__ m, double3* __restrict__ a) {
     Vec4d pos_i1, pos_i2, pos_i3, pos_i4;
     Vec4d pos_j1, pos_j2, pos_j3, pos_j4;
@@ -91,7 +90,7 @@ void acceleration(int n, double3* __restrict__ x, double* __restrict__ m, double
         acc_i3 += m_i4 * invfact_i34 * diff_pos_i34;
         acc_i4 -= m_i3 * invfact_i34 * diff_pos_i34;
 
-        for (int j = i + 2; j < n; j += 2) {
+        for (int j = i + 4; j < n; j += 2) {
             pos_j1.load(&x[j][0]);
             acc_j1.load(&a[j][0]);
             pos_j2.load(&x[j + 1][0]);
@@ -100,44 +99,74 @@ void acceleration(int n, double3* __restrict__ x, double* __restrict__ m, double
             diff_pos12 = pos_j2 - pos_i1;
             diff_pos21 = pos_j1 - pos_i2;
             diff_pos22 = pos_j2 - pos_i2;
+            diff_pos31 = pos_j1 - pos_i3;
+            diff_pos32 = pos_j2 - pos_i3;
+            diff_pos41 = pos_j1 - pos_i4;
+            diff_pos42 = pos_j2 - pos_i4;
 
             double r2_11 = horizontal_add(diff_pos11 * diff_pos11) + epsilon2;
             double r2_12 = horizontal_add(diff_pos12 * diff_pos12) + epsilon2;
             double r2_21 = horizontal_add(diff_pos21 * diff_pos21) + epsilon2;
             double r2_22 = horizontal_add(diff_pos22 * diff_pos22) + epsilon2;
+            double r2_31 = horizontal_add(diff_pos31 * diff_pos31) + epsilon2;
+            double r2_32 = horizontal_add(diff_pos32 * diff_pos32) + epsilon2;
+            double r2_41 = horizontal_add(diff_pos41 * diff_pos41) + epsilon2;
+            double r2_42 = horizontal_add(diff_pos42 * diff_pos42) + epsilon2;
 
             double r_11 = sqrt(r2_11);
             double r_12 = sqrt(r2_12);
             double r_21 = sqrt(r2_21);
             double r_22 = sqrt(r2_22);
+            double r_31 = sqrt(r2_31);
+            double r_32 = sqrt(r2_32);
+            double r_41 = sqrt(r2_41);
+            double r_42 = sqrt(r2_42);
 
             double invfact_11 = G / (r_11 * r2_11);
             double invfact_12 = G / (r_12 * r2_12);
             double invfact_21 = G / (r_21 * r2_21);
             double invfact_22 = G / (r_22 * r2_22);
+            double invfact_31 = G / (r_31 * r2_31);
+            double invfact_32 = G / (r_32 * r2_32);
+            double invfact_41 = G / (r_41 * r2_41);
+            double invfact_42 = G / (r_42 * r2_42);
 
-            double factorj1 = m[j] * invfact_11;
-            double factorj2 = m[j] * invfact_12;
-            double factorj3 = m[j + 1] * invfact_21;
-            double factorj4 = m[j + 1] * invfact_22;
+            double m_j1 = m[j];
+            double m_j2 = m[j + 1];
+            double factorj1 = m_j1 * invfact_11;
+            double factorj2 = m_j1 * invfact_12;
+            double factorj3 = m_j2 * invfact_21;
+            double factorj4 = m_j2 * invfact_22;
+            double factorj5 = m_j1 * invfact_31;
+            double factorj6 = m_j1 * invfact_32;
+            double factorj7 = m_j2 * invfact_41;
+            double factorj8 = m_j2 * invfact_42;
 
             acc_i1 += factorj1 * diff_pos11;
             acc_i1 += factorj2 * diff_pos12;
             acc_i2 += factorj3 * diff_pos21;
             acc_i2 += factorj4 * diff_pos22;
+            acc_i3 += factorj5 * diff_pos31;
+            acc_i3 += factorj6 * diff_pos32;
+            acc_i4 += factorj7 * diff_pos41;
+            acc_i4 += factorj8 * diff_pos42;
 
             acc_j1 -= factorj1 * diff_pos11;
             acc_j1 -= factorj3 * diff_pos21;
             acc_j2 -= factorj2 * diff_pos12;
             acc_j2 -= factorj4 * diff_pos22;
+            acc_j1 -= factorj5 * diff_pos31;
+            acc_j1 -= factorj7 * diff_pos41;
+            acc_j2 -= factorj6 * diff_pos32;
+            acc_j2 -= factorj8 * diff_pos42;
 
             acc_j1.store(&a[j][0]);
             acc_j2.store(&a[j + 1][0]);
         }
-        acc_i1.store_nt(&a[i][0]);
-        acc_i2.store_nt(&a[i + 1][0]);
-        acc_i3.store_nt(&a[i + 2][0]);
-        acc_i4.store_nt(&a[i + 3][0]);
+        acc_i1.store(&a[i][0]);
+        acc_i2.store(&a[i + 1][0]);
+        acc_i3.store(&a[i + 2][0]);
+        acc_i4.store(&a[i + 3][0]);
     }
 }
 
