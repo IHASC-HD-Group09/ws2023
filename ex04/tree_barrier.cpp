@@ -7,20 +7,23 @@
 
 #include "time_experiment.hh"
 
-const int P = 4;  // number of threads and number of leafs
+const int P = 16;  // number of threads and number of leafs
 std::vector<std::atomic_int> sync_counter(P);
 std::vector<bool> sleep_flag(P, false);
 std::atomic_int counter = 0;  // shared counter
 
-// Combining Tree Barrier
-void f(int rank) {
-    if (P == 1) {
-        counter++;
-        return;
+void wake_up(int rank) {
+    int partner{};
+    for (int k = std::log2(P) - 1; k >= 0; k--) {
+        partner = std::pow(2, k) + rank;
+
+        if (partner <= P) {
+            sleep_flag[partner] = false;
+        }
     }
+}
 
-    sync_counter[rank] = 1;  // initialize own value
-
+void lock(int rank) {
     int partner{};
     for (int k = 0; k < std::log2(P); k++) {
         partner = std::pow(2, k) + rank;
@@ -35,20 +38,23 @@ void f(int rank) {
             sync_counter[rank] += sync_counter[partner];
         }
     }
-
     if (!sleep_flag[rank]) {
         counter += sync_counter[rank];
     }
+}
 
-    while (sleep_flag[rank]) {}
-
-    for (int k = std::log2(P) - 1; k >= 0; k--) {
-        partner = std::pow(2, k) + rank;
-
-        if (partner <= P) {
-            sleep_flag[partner] = false;
-        }
+// Combining Tree Barrier
+void f(int rank) {
+    if (P == 1) {
+        counter++;
+        return;
     }
+
+    sync_counter[rank] = 1;  // initialize own value
+
+    lock(rank);  // start lock from leafs
+    while (sleep_flag[rank]) {}
+    wake_up(rank);  // start wake up from root
 }
 
 void fill_atomic_vector(std::vector<std::atomic_int>& vec, int value) {
