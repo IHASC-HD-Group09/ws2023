@@ -7,17 +7,19 @@
 
 #include "time_experiment.hh"
 
-const int P = 16;  // number of threads and number of leafs
+const int P = 512*2*2*2;  // number of threads and number of leafs
 std::vector<std::atomic_int> sync_counter(P);
-std::vector<bool> sleep_flag(P, false);
+std::vector<std::atomic_bool> sleep_flag(P);
 std::atomic_int counter = 0;  // shared counter
+
+std::atomic<double> time_barrier = 0.0;
 
 void wake_up(int rank) {
     int partner{};
     for (int k = std::log2(P) - 1; k >= 0; k--) {
         partner = std::pow(2, k) + rank;
 
-        if (partner <= P) {
+        if (partner < P) {
             sleep_flag[partner] = false;
         }
     }
@@ -33,7 +35,7 @@ void lock(int rank) {
             break;
         }
 
-        if (partner <= P) {
+        if (partner < P) {
             while (!sleep_flag[partner]) {}  // wait for sleep of partner
             sync_counter[rank] += sync_counter[partner];
         }
@@ -51,10 +53,13 @@ void f(int rank) {
     }
 
     sync_counter[rank] = 1;  // initialize own value
-
+    auto start = std::chrono::high_resolution_clock::now();
     lock(rank);  // start lock from leafs
     while (sleep_flag[rank]) {}
     wake_up(rank);  // start wake up from root
+    auto end = std::chrono::high_resolution_clock::now();
+    time_barrier = std::max(time_barrier.load(), static_cast<double>(std::chrono::duration_cast<std::chrono::microseconds>((end - start)).count()));
+    
 }
 
 void fill_atomic_vector(std::vector<std::atomic_int>& vec, int value) {
@@ -74,4 +79,5 @@ int main() {
         threads[rank].join();
     }
     std::cout << "Counter = " << counter << std::endl;
+    std::cout << "Time = " << time_barrier << std::endl;
 }
