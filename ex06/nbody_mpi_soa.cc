@@ -56,14 +56,14 @@ void acceleration_blocking(int n,
         // block (I,I) diagonal block; requires only upper triangle
         for (int i = I; i < I + B; i++) {
             for (int j = i + 1; j < I + B; j++) {
-                double d0 = x[0 * n + j] - x[0 * n + i];
-                double d1 = x[1 * n + j] - x[1 * n + i];
-                double d2 = x[2 * n + j] - x[2 * n + i];
-                double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                double r = sqrt(r2);
-                double invfact = G / (r * r2);
-                double factori = m[i] * invfact;
-                double factorj = m[j] * invfact;
+                double const d0 = x[0 * n + j] - x[0 * n + i];
+                double const d1 = x[1 * n + j] - x[1 * n + i];
+                double const d2 = x[2 * n + j] - x[2 * n + i];
+                double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                double const r = sqrt(r2);
+                double const invfact = G / (r * r2);
+                double const factori = m[i] * invfact;
+                double const factorj = m[j] * invfact;
                 a[0 * n + i] += factorj * d0;
                 a[1 * n + i] += factorj * d1;
                 a[2 * n + i] += factorj * d2;
@@ -76,14 +76,14 @@ void acceleration_blocking(int n,
         for (int J = I + B; J < masses_per_rank; J += B) {  // loop over columns of blocks
             for (int i = I; i < I + B; i++) {
                 for (int j = J; j < J + B; j++) {
-                    double d0 = x[0 * n + j] - x[0 * n + i];
-                    double d1 = x[1 * n + j] - x[1 * n + i];
-                    double d2 = x[2 * n + j] - x[2 * n + i];
-                    double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                    double r = sqrt(r2);
-                    double invfact = G / (r * r2);
-                    double factori = m[i] * invfact;
-                    double factorj = m[j] * invfact;
+                    double const d0 = x[0 * n + j] - x[0 * n + i];
+                    double const d1 = x[1 * n + j] - x[1 * n + i];
+                    double const d2 = x[2 * n + j] - x[2 * n + i];
+                    double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                    double const r = sqrt(r2);
+                    double const invfact = G / (r * r2);
+                    double const factori = m[i] * invfact;
+                    double const factorj = m[j] * invfact;
                     a[0 * n + i] += factorj * d0;
                     a[1 * n + i] += factorj * d1;
                     a[2 * n + i] += factorj * d2;
@@ -115,9 +115,9 @@ void acceleration_blocking(int n,
     }
 
     // message tags
-    int x_tag = 42;
-    int m_tag = 43;
-    int a_tag = 44;
+    int const x_tag = 42;
+    int const m_tag = 43;
+    int const a_tag = 44;
 
     // now do the interactions with masses in other processes
     // Idea:
@@ -158,7 +158,7 @@ void acceleration_blocking(int n,
         }
 
         // the positions and masses we have in this round are from the following rank
-        int s = (rank + round) % P;
+        int const s = (rank + round) % P;
 
         // compute block interactions
         for (int I = 0; I < masses_per_rank; I += B) {
@@ -166,14 +166,14 @@ void acceleration_blocking(int n,
                 if (g(J / B, s) > g(I / B, rank)) {
                     for (int j = J; j < J + B; j++) {
                         for (int i = I; i < I + B; i++) {
-                            double d0 = xin[0 * n + j] - x[0 * n + i];
-                            double d1 = xin[1 * n + j] - x[1 * n + i];
-                            double d2 = xin[2 * n + j] - x[2 * n + i];
-                            double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                            double r = sqrt(r2);
-                            double invfact = G / (r * r2);
-                            double factori = m[i] * invfact;
-                            double factorj = m[j] * invfact;
+                            double const d0 = xin[0 * n + j] - x[0 * n + i];
+                            double const d1 = xin[1 * n + j] - x[1 * n + i];
+                            double const d2 = xin[2 * n + j] - x[2 * n + i];
+                            double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                            double const r = sqrt(r2);
+                            double const invfact = G / (r * r2);
+                            double const factori = m[i] * invfact;
+                            double const factorj = m[j] * invfact;
                             a[0 * n + i] += factorj * d0;
                             a[1 * n + i] += factorj * d1;
                             a[2 * n + i] += factorj * d2;
@@ -477,17 +477,17 @@ int main(int argc, char** argv) {
         cnt++;
         if (k % mod == 0) {
             auto stop = get_time_stamp();
-            double elapsed = get_duration_seconds(start, stop);
+            double const elapsed = get_duration_seconds(start, stop);
             elapsed_total += elapsed;
-            double flop = mod * (13.0 * n * (n - 1.0) + 12.0 * n);
+            double const flop = mod * (13.0 * n * (n - 1.0) + 12.0 * n);
             if (rank == 0) {
                 printf("%d: %g seconds for %g ops = %g GFLOPS\n", rank, elapsed, flop,
                        flop / elapsed / 1E9);
             }
 
             // collect data
-            copy(x, xSoA, masses_per_rank);
-            copy(v, vSoA, masses_per_rank);
+            copy(x, x_SoA, masses_per_rank);
+            copy(v, v_SoA, masses_per_rank);
             MPI_Gather(&x[0][0], masses_per_rank * M, MPI_DOUBLE, &x_init[0][0],
                        masses_per_rank * M, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             MPI_Gather(&v[0][0], masses_per_rank * M, MPI_DOUBLE, &v_init[0][0],
@@ -506,7 +506,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    double flop = cnt * (13.0 * n * (n - 1.0) + 12.0 * n);
+    double const flop = cnt * (13.0 * n * (n - 1.0) + 12.0 * n);
     if (rank == 0) {
         printf("%g seconds for %g ops = %g GFLOPS\n", elapsed_total, flop,
                flop / elapsed_total / 1E9);

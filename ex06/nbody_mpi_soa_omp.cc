@@ -7,6 +7,7 @@
 #include <vector>
 
 #include <mpi.h>
+#include <omp.h>
 
 #include "nbody_generate.hh"
 #include "nbody_io.hh"
@@ -26,8 +27,9 @@ const double G = 1.0;           // gravitational constant
 const double epsilon2 = 1E-10;  // softening parameter
 
 // have the parallel configuration as global variables
-int P;     // total number of MPI processes
-int rank;  // my number 0 <= rank < P
+int P;           // total number of MPI processes
+int rank;        // my number 0 <= rank < P
+int numthreads;  // number of threads used by OpenMP per rank
 
 // data decomposition
 int blocks_total;     // the total number of blocks of size B
@@ -40,8 +42,7 @@ int masses_per_rank;  // number of masses in each rank
 int g(int i, int r) {
     if (i % 2 == 0) {
         return i * P + r;
-    } else {
-        return i * P + P - 1 - r;
+    return i * P + P - 1 - r;
     }
 }
 
@@ -54,7 +55,7 @@ void acceleration_blocking(int n,
 #pragma omp parallel shared(aglobal), firstprivate(n, x, m, masses_per_rank, B, P)
     {
         // make private acceleration vector to accumulate to
-        std::vector<std::array<double, M>> a(masses_per_rank, {0.0, 0.0, 0.0, 0.0});
+        std::vector<double> a(masses_per_rank*3, {0.0});
 
         int id = omp_get_thread_num();
         if (id < 0 || id >= numthreads) {
@@ -185,8 +186,8 @@ void acceleration_blocking(int n,
 #pragma omp parallel shared(aglobal), firstprivate(n, x, m, masses_per_rank, B, P)
         {
             // make private acceleration vector to accumulate to
-            std::vector<std::array<double, M>> aself(masses_per_rank, {0.0, 0.0, 0.0, 0.0});
-            std::vector<std::array<double, M>> aother(masses_per_rank, {0.0, 0.0, 0.0, 0.0});
+            std::vector<double> aself(masses_per_rank*3, {0.0});
+            std::vector<double> aother(masses_per_rank*3, {0.0});
 
             // loop over rows of blocks
 #pragma omp for schedule(dynamic, 1)
@@ -217,12 +218,12 @@ void acceleration_blocking(int n,
 #pragma omp critical
             {
                 for (int i = 0; i < masses_per_rank; i++) {
-                    aglobal[i][0] += aself[i][0];
-                    aglobal[i][1] += aself[i][1];
-                    aglobal[i][2] += aself[i][2];
-                    ain[i][0] += aother[i][0];
-                    ain[i][1] += aother[i][1];
-                    ain[i][2] += aother[i][2];
+                    aglobal[0 * n + i] += aself[0 * n + i];
+                    aglobal[1 * n + i] += aself[1 * n + i];
+                    aglobal[2 * n + i] += aself[2 * n + i];
+                    ain[0 * n + i] += aother[0 * n + i];
+                    ain[1 * n + i] += aother[1 * n + i];
+                    ain[2 * n + i] += aother[2 * n + i];
                 }
             }
         }
@@ -336,18 +337,20 @@ int main(int argc, char** argv) {
     // other processes allocate only their chunk
 
     // command line for restarting
-    if (argc == 5) {
+    if (argc == 6) {
         sscanf(argv[1], "%s", &basename);
         sscanf(argv[2], "%d", &k);
         sscanf(argv[3], "%d", &timesteps);
         sscanf(argv[4], "%d", &mod);
-    } else if (argc == 6)  // command line for starting with initial condition
+        sscanf(argv[5], "%d", &numthreads);
+    } else if (argc == 7)  // command line for starting with initial condition
     {
         sscanf(argv[1], "%s", &basename);
         sscanf(argv[2], "%d", &n);
         sscanf(argv[3], "%d", &timesteps);
         sscanf(argv[4], "%lg", &dt);
         sscanf(argv[5], "%d", &mod);
+        sscanf(argv[6], "%d", &numthreads);
     } else  // invalid command line, print usage
     {
         if (rank == 0) {
@@ -361,10 +364,12 @@ int main(int argc, char** argv) {
     }
     // we do not know the number of masses yet in case of file restart
 
+    omp_set_num_threads(numthreads);
+
     // setup of masses is done by rank 0 only
     if (rank == 0) {
         // set up computation from file
-        if (argc == 5) {
+        if (argc == 6) {
             sprintf(name, "%s_%06d.vtk", basename, k);
             file = fopen(name, "r");
             if (file == NULL) {
@@ -384,7 +389,7 @@ int main(int argc, char** argv) {
                       << std::endl;
         }
         // set up computation from initial condition
-        if (argc == 6) {
+        if (argc == 7) {
             x_init = new (std::align_val_t(64)) double3[n];
             v_init = new (std::align_val_t(64)) double3[n];
             m_init = new (std::align_val_t(64)) double[n];
@@ -527,8 +532,8 @@ int main(int argc, char** argv) {
             }
 
             // collect data
-            copy(x, xSoA, masses_per_rank);
-            copy(v, vSoA, masses_per_rank);
+            copy(x, x_SoA, masses_per_rank);
+            copy(v, v_SoA, masses_per_rank);
             MPI_Gather(&x[0][0], masses_per_rank * M, MPI_DOUBLE, &x_init[0][0],
                        masses_per_rank * M, MPI_DOUBLE, 0, MPI_COMM_WORLD);
             MPI_Gather(&v[0][0], masses_per_rank * M, MPI_DOUBLE, &v_init[0][0],
