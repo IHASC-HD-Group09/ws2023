@@ -1,7 +1,7 @@
-#include <math.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <array>
+#include <cmath>
+#include <cstdio>
+#include <cstdlib>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -42,25 +42,24 @@ int masses_per_rank;  // number of masses in each rank
 int g(int i, int r) {
     if (i % 2 == 0) {
         return i * P + r;
-    return i * P + P - 1 - r;
     }
+    return i * P + P - 1 - r;
 }
 
 // mpi parallel version based on blocked SoA
 void acceleration_blocking(int n,
-                           double* __restrict__ x,
-                           double* __restrict__ m,
+                           const double* __restrict__ x,
+                           const double* __restrict__ m,
                            double* __restrict__ aglobal) {
     // start with interaction of masses in the SAME process
 #pragma omp parallel shared(aglobal), firstprivate(n, x, m, masses_per_rank, B, P)
     {
         // make private acceleration vector to accumulate to
-        std::vector<double> a(masses_per_rank*3, {0.0});
+        std::vector<double> a(masses_per_rank * 3, {0.0});
 
-        int id = omp_get_thread_num();
+        int const id = omp_get_thread_num();
         if (id < 0 || id >= numthreads) {
-            std::cout << "rank=" << rank << " thread=" << id << " thread id out of range"
-                      << std::endl;
+            std::cout << "rank=" << rank << " thread=" << id << " thread id out of range" << '\n';
         }
 
 // loop over rows of blocks
@@ -69,14 +68,14 @@ void acceleration_blocking(int n,
             // block (I,I) diagonal block; requires only upper triangle
             for (int i = I; i < I + B; i++) {
                 for (int j = i + 1; j < I + B; j++) {
-                    double d0 = x[0 * n + j] - x[0 * n + i];
-                    double d1 = x[1 * n + j] - x[1 * n + i];
-                    double d2 = x[2 * n + j] - x[2 * n + i];
-                    double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                    double r = sqrt(r2);
-                    double invfact = G / (r * r2);
-                    double factori = m[i] * invfact;
-                    double factorj = m[j] * invfact;
+                    double const d0 = x[0 * n + j] - x[0 * n + i];
+                    double const d1 = x[1 * n + j] - x[1 * n + i];
+                    double const d2 = x[2 * n + j] - x[2 * n + i];
+                    double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                    double const r = sqrt(r2);
+                    double const invfact = G / (r * r2);
+                    double const factori = m[i] * invfact;
+                    double const factorj = m[j] * invfact;
                     aglobal[0 * n + i] += factorj * d0;
                     aglobal[1 * n + i] += factorj * d1;
                     aglobal[2 * n + i] += factorj * d2;
@@ -89,14 +88,14 @@ void acceleration_blocking(int n,
             for (int J = I + B; J < masses_per_rank; J += B) {  // loop over columns of blocks
                 for (int i = I; i < I + B; i++) {
                     for (int j = J; j < J + B; j++) {
-                        double d0 = x[0 * n + j] - x[0 * n + i];
-                        double d1 = x[1 * n + j] - x[1 * n + i];
-                        double d2 = x[2 * n + j] - x[2 * n + i];
-                        double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                        double r = sqrt(r2);
-                        double invfact = G / (r * r2);
-                        double factori = m[i] * invfact;
-                        double factorj = m[j] * invfact;
+                        double const d0 = x[0 * n + j] - x[0 * n + i];
+                        double const d1 = x[1 * n + j] - x[1 * n + i];
+                        double const d2 = x[2 * n + j] - x[2 * n + i];
+                        double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                        double const r = sqrt(r2);
+                        double const invfact = G / (r * r2);
+                        double const factori = m[i] * invfact;
+                        double const factorj = m[j] * invfact;
                         aglobal[0 * n + i] += factorj * d0;
                         aglobal[1 * n + i] += factorj * d1;
                         aglobal[2 * n + i] += factorj * d2;
@@ -137,9 +136,9 @@ void acceleration_blocking(int n,
     }
 
     // message tags
-    int x_tag = 42;
-    int m_tag = 43;
-    int a_tag = 44;
+    int const x_tag = 42;
+    int const m_tag = 43;
+    int const a_tag = 44;
 
     // now do the interactions with masses in other processes
     // Idea:
@@ -180,14 +179,14 @@ void acceleration_blocking(int n,
         }
 
         // the positions and masses we have in this round are from the following rank
-        int s = (rank + round) % P;
+        int const s = (rank + round) % P;
 
         // compute block interactions
 #pragma omp parallel shared(aglobal), firstprivate(n, x, m, masses_per_rank, B, P)
         {
             // make private acceleration vector to accumulate to
-            std::vector<double> aself(masses_per_rank*3, {0.0});
-            std::vector<double> aother(masses_per_rank*3, {0.0});
+            std::vector<double> aself(masses_per_rank * 3, {0.0});
+            std::vector<double> aother(masses_per_rank * 3, {0.0});
 
             // loop over rows of blocks
 #pragma omp for schedule(dynamic, 1)
@@ -196,14 +195,14 @@ void acceleration_blocking(int n,
                     if (g(J / B, s) > g(I / B, rank)) {
                         for (int j = J; j < J + B; j++) {
                             for (int i = I; i < I + B; i++) {
-                                double d0 = xin[0 * n + j] - x[0 * n + i];
-                                double d1 = xin[1 * n + j] - x[1 * n + i];
-                                double d2 = xin[2 * n + j] - x[2 * n + i];
-                                double r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
-                                double r = sqrt(r2);
-                                double invfact = G / (r * r2);
-                                double factori = m[i] * invfact;
-                                double factorj = m[j] * invfact;
+                                double const d0 = xin[0 * n + j] - x[0 * n + i];
+                                double const d1 = xin[1 * n + j] - x[1 * n + i];
+                                double const d2 = xin[2 * n + j] - x[2 * n + i];
+                                double const r2 = d0 * d0 + d1 * d1 + d2 * d2 + epsilon2;
+                                double const r = sqrt(r2);
+                                double const invfact = G / (r * r2);
+                                double const factori = m[i] * invfact;
+                                double const factorj = m[j] * invfact;
                                 aglobal[0 * n + i] += factorj * d0;
                                 aglobal[1 * n + i] += factorj * d1;
                                 aglobal[2 * n + i] += factorj * d2;
@@ -306,22 +305,22 @@ auto copy(double3* to, const double* from, size_t n) -> void {
 }
 
 int main(int argc, char** argv) {
-    int n;               // number of bodies in the system
-    double* m;           // array for maasses
-    double3* x;          // array for positions
-    double3* v;          // array for velocites
-    double3* a;          // array for accelerations
-    double* m_init;      // array for maasses generated
-    double3* x_init;     // array for positions generated
-    double3* v_init;     // array for velocites generated
-    int timesteps;       // final time step number
-    int k;               // time step number
-    int mod;             // files are written when k is a multiple of mod
+    int n = 0;                  // number of bodies in the system
+    double* m = nullptr;        // array for maasses
+    double3* x = nullptr;       // array for positions
+    double3* v = nullptr;       // array for velocites
+    double3* a = nullptr;       // array for accelerations
+    double* m_init = nullptr;   // array for maasses generated
+    double3* x_init = nullptr;  // array for positions generated
+    double3* v_init = nullptr;  // array for velocites generated
+    int timesteps = 0;          // final time step number
+    int k = 0;                  // time step number
+    int mod = 0;                // files are written when k is a multiple of mod
     char basename[256];  // common part of file name
     char name[256];      // filename with number
-    FILE* file;          // C style file hande
-    double t;            // current time
-    double dt;           // time step
+    FILE* file = nullptr;  // C style file hande
+    double t = NAN;        // current time
+    double dt = NAN;       // time step
 
     // initialize mpi
     MPI_Init(&argc, &argv);
@@ -354,10 +353,10 @@ int main(int argc, char** argv) {
     } else  // invalid command line, print usage
     {
         if (rank == 0) {
-            std::cout << "usage: " << std::endl;
-            std::cout << "nbody_vanilla <basename> <load step> <final step> <every>" << std::endl;
+            std::cout << "usage: " << '\n';
+            std::cout << "nbody_vanilla <basename> <load step> <final step> <every>" << '\n';
             std::cout << "nbody_vanilla <basename> <nbodies> <timesteps> <timestep> <every>"
-                      << std::endl;
+                      << '\n';
         }
         MPI_Finalize();
         return 0;
@@ -372,9 +371,8 @@ int main(int argc, char** argv) {
         if (argc == 6) {
             sprintf(name, "%s_%06d.vtk", basename, k);
             file = fopen(name, "r");
-            if (file == NULL) {
-                std::cout << "could not open file " << std::string(basename) << " aborting"
-                          << std::endl;
+            if (file == nullptr) {
+                std::cout << "could not open file " << std::string(basename) << " aborting" << '\n';
                 return 1;
             }
             n = get_vtk_numbodies(file);
@@ -385,8 +383,7 @@ int main(int argc, char** argv) {
             read_vtk_file_double(file, n, x_init, v_init, m_init, &t, &dt);
             fclose(file);
             k *= mod;  // adjust step number
-            std::cout << "loaded " << n << "bodies from file " << std::string(basename)
-                      << std::endl;
+            std::cout << "loaded " << n << "bodies from file " << std::string(basename) << '\n';
         }
         // set up computation from initial condition
         if (argc == 7) {
@@ -394,7 +391,7 @@ int main(int argc, char** argv) {
             v_init = new (std::align_val_t(64)) double3[n];
             m_init = new (std::align_val_t(64)) double[n];
             two_plummer(n, 17, x_init, v_init, m_init);
-            std::cout << "initialized " << n << " bodies" << std::endl;
+            std::cout << "initialized " << n << " bodies" << '\n';
             k = 0;
             t = 0.0;
             printf("writing %s_%06d.vtk \n", basename, k);
@@ -418,28 +415,28 @@ int main(int argc, char** argv) {
     if (n % (P * B) != 0)  // i.e. n = k*B*P
     {
         if (rank == 0) {
-            std::cout << n << " is not a multiple of B*P, B=" << B << " P=" << P << std::endl;
+            std::cout << n << " is not a multiple of B*P, B=" << B << " P=" << P << '\n';
         }
         MPI_Finalize();
         return 0;
     }
     if ((n / (P * B)) % 2 != 0) {
         if (rank == 0) {
-            std::cout << n << " divided by B*P is not even, B=" << B << " P=" << P << std::endl;
+            std::cout << n << " divided by B*P is not even, B=" << B << " P=" << P << '\n';
         }
         MPI_Finalize();
         return 0;
     }
     if (B % 4 != 0) {
         if (rank == 0) {
-            std::cout << B << "=B is not a multiple of 4 " << std::endl;
+            std::cout << B << "=B is not a multiple of 4 " << '\n';
         }
         MPI_Finalize();
         return 0;
     }
     if (P % 2 != 0) {
         if (rank == 0) {
-            std::cout << P << "=P is not even" << std::endl;
+            std::cout << P << "=P is not even" << '\n';
         }
         MPI_Finalize();
         return 0;
@@ -455,7 +452,7 @@ int main(int argc, char** argv) {
     blocks_per_rank = blocks_total / P;  // my number of blocks
     masses_per_rank = blocks_per_rank * B;
     std::cout << rank << ": has " << blocks_per_rank << " blocks and " << masses_per_rank
-              << " masses" << std::endl;
+              << " masses" << '\n';
 
     // do further memory allocations
     x = new (std::align_val_t(64)) double3[masses_per_rank];
@@ -500,16 +497,16 @@ int main(int argc, char** argv) {
 
     // Every rank has now its own data
     // Transform everything to SoA
-    double* x_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
-    double* v_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
-    double* a_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
+    auto* x_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
+    auto* v_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
+    auto* a_SoA = new (std::align_val_t(64)) double[3 * masses_per_rank];
     copy(x_SoA, x, masses_per_rank);
     copy(v_SoA, v, masses_per_rank);
 
     // initialize timestep and write first file
     if (rank == 0) {
         std::cout << "step=" << k << " finalstep=" << timesteps << " time=" << t << " dt=" << dt
-                  << std::endl;
+                  << '\n';
     }
     double elapsed_total = 0.0;
     auto start = get_time_stamp();
@@ -523,9 +520,9 @@ int main(int argc, char** argv) {
         cnt++;
         if (k % mod == 0) {
             auto stop = get_time_stamp();
-            double elapsed = get_duration_seconds(start, stop);
+            double const elapsed = get_duration_seconds(start, stop);
             elapsed_total += elapsed;
-            double flop = mod * (13.0 * n * (n - 1.0) + 12.0 * n);
+            double const flop = mod * (13.0 * n * (n - 1.0) + 12.0 * n);
             if (rank == 0) {
                 printf("%d: %g seconds for %g ops = %g GFLOPS\n", rank, elapsed, flop,
                        flop / elapsed / 1E9);
@@ -552,7 +549,7 @@ int main(int argc, char** argv) {
         }
     }
 
-    double flop = cnt * (13.0 * n * (n - 1.0) + 12.0 * n);
+    double const flop = cnt * (13.0 * n * (n - 1.0) + 12.0 * n);
     if (rank == 0) {
         printf("%g seconds for %g ops = %g GFLOPS\n", elapsed_total, flop,
                flop / elapsed_total / 1E9);
