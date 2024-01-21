@@ -41,8 +41,82 @@ void jacobi_vanilla_kernel(int n, int iterations, double* __restrict__ u) {
     }
 }
 
+void jacobi_blocked_kernel(int n, int iterations, double* __restrict__ u) {
+    for (int i = 0; i < iterations; i++) {
+        for (int b1 = 1; b1 < n - 1; b1 += B) {
+            for (int b0 = 1; b0 < n - 1; b0 += B) {
+                for (int i1 = b1; i1 < b1 + B && i1 < n - 1; i1++) {
+                    for (int i0 = b0; i0 < b0 + B && i0 < n - 1; i0++) {
+                        u[i1 * n + i0] = 0.25
+                                         * (u[i1 * n + i0 - n] + u[i1 * n + i0 - 1]
+                                            + u[i1 * n + i0 + 1] + u[i1 * n + i0 + n]);
+                    }
+                }
+            }
+        }
+    }
+}
+
+void jacobi_blocked_other(std::shared_ptr<GlobalContext> context) {
+    int n = context->n;
+    double* u = context->u;
+
+    int blocksB = ((n - 2) / B) * B;
+    int remainderB = (n - 2) % B;
+    // std::cout << "blocksB=" << blocksB << " remainderB=" << remainderB << std::endl;
+
+    // do iterations
+    for (int i = 0; i < context->iterations; i++) {
+        // do blocks
+        for (int I1 = 1; I1 < 1 + blocksB; I1 += B) {
+            for (int I0 = 1; I0 < 1 + blocksB; I0 += B) {
+                for (int i1 = I1; i1 < I1 + B; i1++) {
+                    for (int i0 = I0; i0 < I0 + B; i0++) {
+                        u[i1 * n + i0] = 0.25
+                                         * (u[i1 * n + i0 - n] + u[i1 * n + i0 - 1]
+                                            + u[i1 * n + i0 + 1] + u[i1 * n + i0 + n]);
+                    }
+                }
+            }
+        }
+
+        // do remainder of last I1 block
+        for (int I0 = 1; I0 < 1 + blocksB; I0 += B) {
+            for (int i1 = 1 + blocksB; i1 < n - 1; i1++) {
+                for (int i0 = I0; i0 < I0 + B; i0++) {
+                    u[i1 * n + i0] = 0.25
+                                     * (u[i1 * n + i0 - n] + u[i1 * n + i0 - 1] + u[i1 * n + i0 + 1]
+                                        + u[i1 * n + i0 + n]);
+                }
+            }
+        }
+
+        // do remainder
+        for (int i1 = 1 + blocksB; i1 < n - 1; i1++) {
+            for (int i0 = 1 + blocksB; i0 < n - 1; i0++) {
+                u[i1 * n + i0] = 0.25
+                                 * (u[i1 * n + i0 - n] + u[i1 * n + i0 - 1] + u[i1 * n + i0 + 1]
+                                    + u[i1 * n + i0 + n]);
+            }
+        }
+    }
+    for (int I1 = 1; I1 < 1 + blocksB; I1 += B) {
+        for (int i1 = I1; i1 < I1 + B; i1++) {
+            for (int i0 = 1 + blocksB; i0 < n - 1; i0++) {
+                u[i1 * n + i0] = 0.25
+                                 * (u[i1 * n + i0 - n] + u[i1 * n + i0 - 1] + u[i1 * n + i0 + 1]
+                                    + u[i1 * n + i0 + n]);
+            }
+        }
+    }
+}
+
 void jacobi_vanilla(const std::shared_ptr<GlobalContext>& context) {
     jacobi_vanilla_kernel(context->n, context->iterations, context->u);
+}
+
+void jacobi_blocked(const std::shared_ptr<GlobalContext>& context) {
+    jacobi_blocked_kernel(context->n, context->iterations, context->u);
 }
 
 // main function runs the experiments and outputs results as csv
@@ -74,8 +148,8 @@ int main(int argc, char** argv) {
     };
 
     std::cout << "N,";
-    std::cout << "vanilla";
-
+    std::cout << "vanilla,";
+    std::cout << "blocked,";
 
     std::cout << std::endl;
     std::cout << n * n;
@@ -104,11 +178,28 @@ int main(int argc, char** argv) {
     stop = get_time_stamp();
     elapsed = get_duration_seconds(start, stop);
     std::cout << "," << updates / elapsed / 1e9;
+    auto results_vanilla = new (std::align_val_t(64)) double[n * n];
+    for (int i = 0; i < n * n; i++) {
+        results_vanilla[i] = context->u[i];
+    }
+
+    // blocked
+    for (int i1 = 0; i1 < n; i1++) {
+        for (int i0 = 0; i0 < n; i0++) {
+            context->u[i1 * n + i0] = g(i0, i1);
+        }
+    }
+    start = get_time_stamp();
+    jacobi_blocked(context);
+    stop = get_time_stamp();
+    elapsed = get_duration_seconds(start, stop);
+    std::cout << "," << updates / elapsed / 1e9;
 
     std::cout << std::endl;
-
+    std::cout << context->u[13] << "     " <<  results_vanilla[13] << std::endl;
     // deallocate arrays
     delete[] context->u;
+    delete[] results_vanilla;
 
     return 0;
 }
